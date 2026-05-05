@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Termo de Retirada e Devolução</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 8px rgba(0,0,0,0.15);
+    }
+
+    h1 {
+        text-align: center;
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+
+    input, textarea {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        margin-top: 4px;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    th, td {
+        border: 1px solid #999;
+        padding: 5px;
+    }
+
+    th {
+        background: #eee;
+    }
+
+    td input {
+        border: none;
+        padding: 6px;
+    }
+
+    .botoes {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        padding: 10px 15px;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        background: #333;
+        color: #fff;
+        font-weight: bold;
+    }
+
+    button:hover {
+        background: #000;
+    }
+
+    pre {
+        background: #111;
+        color: #0f0;
+        padding: 15px;
+        overflow-x: auto;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        margin-top: 20px;
+        white-space: pre;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Termo de Retirada e Devolução de Materiais / Ferramentas</h1>
+
+    <label>Empresa</label>
+    <input type="text" id="empresa">
+
+    <label>Responsável</label>
+    <input type="text" id="responsavel">
+
+    <label>Obra</label>
+    <input type="text" id="obra">
+
+    <label>Data de Retirada</label>
+    <input type="date" id="dataRetirada">
+
+    <label>Hora</label>
+    <input type="time" id="horaRetirada">
+
+    <h3>Materiais Retirados</h3>
+
+    <table id="tabelaMateriais">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Código</th>
+                <th>Descrição</th>
+                <th style="width: 12%;">Qtd.</th>
+                <th style="width: 20%;">Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="text" class="codigo"></td>
+                <td><input type="text" class="descricao"></td>
+                <td><input type="text" class="quantidade"></td>
+                <td><input type="text" class="estado"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="botoes">
+        <button onclick="adicionarLinha()">Adicionar Material</button>
+        <button onclick="gerarTXT()">Gerar TXT</button>
+        <button onclick="baixarTXT()">Baixar TXT</button>
+        <button onclick="imprimirPrevia()">Imprimir Prévia</button>
+    </div>
+
+    <pre id="saida"></pre>
+</div>
+
+<script>
+let ultimoTXT = "";
+
+function repetir(char, qtd) {
+    return char.repeat(qtd);
+}
+
+function centralizar(texto, largura) {
+    texto = String(texto || "");
+    if (texto.length >= largura) {
+        return texto.substring(0, largura);
+    }
+
+    let espacos = largura - texto.length;
+    let esquerda = Math.floor(espacos / 2);
+    let direita = espacos - esquerda;
+
+    return repetir(" ", esquerda) + texto + repetir(" ", direita);
+}
+
+function cortar(texto, tamanho) {
+    texto = String(texto || "");
+    if (texto.length > tamanho) {
+        return texto.substring(0, tamanho);
+    }
+    return texto;
+}
+
+function completarDireita(texto, tamanho) {
+    texto = cortar(texto, tamanho);
+    return texto + repetir(" ", tamanho - texto.length);
+}
+
+function completarEsquerda(texto, tamanho) {
+    texto = cortar(texto, tamanho);
+    return repetir(" ", tamanho - texto.length) + texto;
+}
+
+function formatarData(data) {
+    if (!data) return "";
+    let partes = data.split("-");
+    return partes[2] + "/" + partes[1] + "/" + partes[0];
+}
+
+function adicionarLinha() {
+    let tbody = document.querySelector("#tabelaMateriais tbody");
+
+    let tr = document.createElement("tr");
+
+    tr.innerHTML = `
+        <td><input type="text" class="codigo"></td>
+        <td><input type="text" class="descricao"></td>
+        <td><input type="text" class="quantidade"></td>
+        <td><input type="text" class="estado"></td>
+    `;
+
+    tbody.appendChild(tr);
+}
+
+function gerarTXT() {
+    const LARGURA = 48;
+
+    let empresa = document.getElementById("empresa").value;
+    let responsavel = document.getElementById("responsavel").value;
+    let obra = document.getElementById("obra").value;
+    let dataRetirada = formatarData(document.getElementById("dataRetirada").value);
+    let horaRetirada = document.getElementById("horaRetirada").value;
+
+    let txt = "";
+
+    txt += centralizar("TERMO DE RETIRADA", LARGURA) + "\n";
+    txt += centralizar("E DEVOLUCAO DE MATERIAIS", LARGURA) + "\n";
+    txt += repetir("-", LARGURA) + "\n";
+
+    txt += "Empresa: " + cortar(empresa, 39) + "\n";
+    txt += "Resp.:   " + cortar(responsavel, 39) + "\n";
+    txt += "Obra:    " + cortar(obra, 39) + "\n";
+    txt += "Data:    " + completarDireita(dataRetirada, 10);
+    txt += " Hora: " + horaRetirada + "\n";
+
+    txt += repetir("-", LARGURA) + "\n";
+    txt += completarDireita("COD", 6);
+    txt += completarDireita("DESCRICAO", 25);
+    txt += completarEsquerda("QTD", 5);
+    txt += completarDireita(" ESTADO", 12) + "\n";
+    txt += repetir("-", LARGURA) + "\n";
+
+    let linhas = document.querySelectorAll("#tabelaMateriais tbody tr");
+
+    linhas.forEach(function(tr) {
+        let codigo = tr.querySelector(".codigo").value;
+        let descricao = tr.querySelector(".descricao").value;
+        let quantidade = tr.querySelector(".quantidade").value;
+        let estado = tr.querySelector(".estado").value;
+
+        if (
+            codigo.trim() !== "" ||
+            descricao.trim() !== "" ||
+            quantidade.trim() !== "" ||
+            estado.trim() !== ""
+        ) {
+            txt += completarDireita(codigo, 6);
+            txt += completarDireita(descricao, 25);
+            txt += completarEsquerda(quantidade, 5);
+            txt += " ";
+            txt += completarDireita(estado, 11);
+            txt += "\n";
+        }
+    });
+
+    txt += repetir("-", LARGURA) + "\n\n";
+
+    txt += "Nome e sobrenome:\n\n";
+    txt += repetir("_", LARGURA) + "\n\n";
+
+    txt += "Assinatura:\n\n";
+    txt += repetir("_", LARGURA) + "\n\n";
+
+    txt += centralizar("BR EQUIPAMENTOS", LARGURA) + "\n";
+
+    /*
+        Comandos ESC/POS opcionais:
+        \x1B\x40 = inicializa impressora
+        \x1D\x56\x00 = corte total de papel
+
+        Alguns drivers aceitam, outros imprimem caracteres estranhos.
+        Por isso deixei desativado por padrao.
+    */
+
+    // txt = "\x1B\x40" + txt + "\n\n\n\x1D\x56\x00";
+
+    ultimoTXT = txt;
+
+    document.getElementById("saida").textContent = txt;
+
+    return txt;
+}
+
+function baixarTXT() {
+    let txt = gerarTXT();
+
+    let blob = new Blob([txt], {
+        type: "text/plain;charset=utf-8"
+    });
+
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "termo_retirada.txt";
+    link.click();
+
+    URL.revokeObjectURL(link.href);
+}
+
+function imprimirPrevia() {
+    let txt = gerarTXT();
+
+    let janela = window.open("", "_blank");
+
+    janela.document.write(`
+        <html>
+        <head>
+            <title>Impressao</title>
+            <style>
+                body {
+                    font-family: "Courier New", monospace;
+                    font-size: 12px;
+                    white-space: pre;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                @media print {
+                    @page {
+                        size: 80mm auto;
+                        margin: 4mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>${txt.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</body>
+        </html>
+    `);
+
+    janela.document.close();
+    janela.focus();
+    janela.print();
+}
+</script>
+
+</body>
+</html>
