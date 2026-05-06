@@ -92,6 +92,7 @@
         margin-top: 20px;
         white-space: pre;
     }
+
 </style>
 </head>
 
@@ -99,6 +100,7 @@
 
 <div class="container">
     <h1>Termo de Retirada e Devolução de Materiais / Ferramentas</h1>
+
 
     <label>Empresa</label>
     <input type="text" id="empresa">
@@ -123,7 +125,7 @@
                 <th style="width: 15%;">Código</th>
                 <th>Descrição</th>
                 <th style="width: 12%;">Qtd.</th>
-                <th style="width: 20%;">Estado</th>
+                <th style="width: 20%;">Observação</th>
             </tr>
         </thead>
         <tbody>
@@ -131,7 +133,7 @@
                 <td><input type="text" class="codigo"></td>
                 <td><input type="text" class="descricao"></td>
                 <td><input type="text" class="quantidade"></td>
-                <td><input type="text" class="estado"></td>
+                <td><input type="text" class="observacao"></td>
             </tr>
         </tbody>
     </table>
@@ -150,11 +152,36 @@
 let ultimoTXT = "";
 
 function repetir(char, qtd) {
-    return char.repeat(qtd);
+    return new Array(qtd + 1).join(char);
+}
+
+function larguraAtual() {
+    return 42;
+}
+
+function normalizarTexto(texto) {
+    texto = String(texto || "");
+
+    // Remove acentos para evitar caracteres estranhos em impressoras ESC/POS genéricas.
+    if (texto.normalize) {
+        texto = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    texto = texto
+        .replace(/ç/g, "c")
+        .replace(/Ç/g, "C")
+        .replace(/[“”]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/[–—]/g, "-");
+
+    // Mantém apenas caracteres imprimíveis ASCII básicos.
+    texto = texto.replace(/[^\x20-\x7E]/g, "");
+
+    return texto;
 }
 
 function centralizar(texto, largura) {
-    texto = String(texto || "");
+    texto = normalizarTexto(texto);
     if (texto.length >= largura) {
         return texto.substring(0, largura);
     }
@@ -167,7 +194,7 @@ function centralizar(texto, largura) {
 }
 
 function cortar(texto, tamanho) {
-    texto = String(texto || "");
+    texto = normalizarTexto(texto);
     if (texto.length > tamanho) {
         return texto.substring(0, tamanho);
     }
@@ -192,95 +219,101 @@ function formatarData(data) {
 
 function adicionarLinha() {
     let tbody = document.querySelector("#tabelaMateriais tbody");
-
     let tr = document.createElement("tr");
 
     tr.innerHTML = `
         <td><input type="text" class="codigo"></td>
         <td><input type="text" class="descricao"></td>
         <td><input type="text" class="quantidade"></td>
-        <td><input type="text" class="estado"></td>
+        <td><input type="text" class="observacao"></td>
     `;
 
     tbody.appendChild(tr);
 }
 
-function gerarTXT() {
-    const LARGURA = 48;
+function montarCabecalho(txt, largura) {
+    txt += centralizar("TERMO DE RETIRADA", largura) + "\n";
+    txt += centralizar("E DEVOLUCAO DE MATERIAIS", largura) + "\n";
+    txt += repetir("-", largura) + "\n";
+    return txt;
+}
 
+function montarDadosPrincipais(txt, largura) {
     let empresa = document.getElementById("empresa").value;
     let responsavel = document.getElementById("responsavel").value;
     let obra = document.getElementById("obra").value;
     let dataRetirada = formatarData(document.getElementById("dataRetirada").value);
     let horaRetirada = document.getElementById("horaRetirada").value;
 
-    let txt = "";
+    let campo = largura - 9;
 
-    txt += centralizar("TERMO DE RETIRADA", LARGURA) + "\n";
-    txt += centralizar("E DEVOLUCAO DE MATERIAIS", LARGURA) + "\n";
-    txt += repetir("-", LARGURA) + "\n";
+    txt += "Empresa: " + cortar(empresa, campo) + "\n";
+    txt += "Resp.:   " + cortar(responsavel, campo) + "\n";
+    txt += "Obra:    " + cortar(obra, campo) + "\n";
 
-    txt += "Empresa: " + cortar(empresa, 39) + "\n";
-    txt += "Resp.:   " + cortar(responsavel, 39) + "\n";
-    txt += "Obra:    " + cortar(obra, 39) + "\n";
-    txt += "Data:    " + completarDireita(dataRetirada, 10);
-    txt += " Hora: " + horaRetirada + "\n";
+    if (largura >= 42) {
+        txt += "Data:    " + completarDireita(dataRetirada, 10);
+        txt += " Hora: " + horaRetirada + "\n";
+    } else {
+        txt += "Data:    " + dataRetirada + "\n";
+        txt += "Hora:    " + horaRetirada + "\n";
+    }
 
-    txt += repetir("-", LARGURA) + "\n";
-    txt += completarDireita("COD", 6);
-    txt += completarDireita("DESCRICAO", 25);
-    txt += completarEsquerda("QTD", 5);
-    txt += completarDireita(" ESTADO", 12) + "\n";
-    txt += repetir("-", LARGURA) + "\n";
+    return txt;
+}
 
-    let linhas = document.querySelectorAll("#tabelaMateriais tbody tr");
+function montarTabela(txt, largura) {
+    // Layout fixo para 42 colunas:
+    // COD = 5, DESCRICAO = 22, QTD = 4, espaço = 1, OBSERVACAO = 10
+    txt += repetir("-", largura) + "\n";
+    txt += completarDireita("COD", 5);
+    txt += completarDireita("DESCRICAO", 22);
+    txt += completarEsquerda("QTD", 4);
+    txt += completarDireita(" OBSERVACAO", 11) + "\n";
+    txt += repetir("-", largura) + "\n";
 
-    linhas.forEach(function(tr) {
+    document.querySelectorAll("#tabelaMateriais tbody tr").forEach(function(tr) {
         let codigo = tr.querySelector(".codigo").value;
         let descricao = tr.querySelector(".descricao").value;
         let quantidade = tr.querySelector(".quantidade").value;
-        let estado = tr.querySelector(".estado").value;
+        let observacao = tr.querySelector(".observacao").value;
 
-        if (
-            codigo.trim() !== "" ||
-            descricao.trim() !== "" ||
-            quantidade.trim() !== "" ||
-            estado.trim() !== ""
-        ) {
-            txt += completarDireita(codigo, 6);
-            txt += completarDireita(descricao, 25);
-            txt += completarEsquerda(quantidade, 5);
+        if (codigo.trim() || descricao.trim() || quantidade.trim() || observacao.trim()) {
+            txt += completarDireita(codigo, 5);
+            txt += completarDireita(descricao, 22);
+            txt += completarEsquerda(quantidade, 4);
             txt += " ";
-            txt += completarDireita(estado, 11);
+            txt += completarDireita(observacao, 10);
             txt += "\n";
         }
     });
 
-    txt += repetir("-", LARGURA) + "\n\n";
+    return txt;
+}
 
+function montarRodape(txt, largura) {
+    txt += repetir("-", largura) + "\n\n";
     txt += "Nome e sobrenome:\n\n";
-    txt += repetir("_", LARGURA) + "\n\n";
-
+    txt += repetir("_", largura) + "\n\n";
     txt += "Assinatura:\n\n";
-    txt += repetir("_", LARGURA) + "\n\n";
+    txt += repetir("_", largura) + "\n\n";
+    txt += centralizar("BR EQUIPAMENTOS", largura) + "\n";
+    return txt;
+}
 
-    txt += centralizar("BR EQUIPAMENTOS", LARGURA) + "\n";
 
-    /*
-        Comandos ESC/POS opcionais:
-        \x1B\x40 = inicializa impressora
-        \x1D\x56\x00 = corte total de papel
+function gerarTXT() {
+    const LARGURA = larguraAtual();
+    let txt = "";
 
-        Alguns drivers aceitam, outros imprimem caracteres estranhos.
-        Por isso deixei desativado por padrao.
-    */
+    txt = montarCabecalho(txt, LARGURA);
+    txt = montarDadosPrincipais(txt, LARGURA);
+    txt = montarTabela(txt, LARGURA);
+    txt = montarRodape(txt, LARGURA);
 
-    // txt = "\x1B\x40" + txt + "\n\n\n\x1D\x56\x00";
 
     ultimoTXT = txt;
-
     document.getElementById("saida").textContent = txt;
-
     return txt;
 }
 
@@ -288,26 +321,34 @@ function baixarTXT() {
     let txt = gerarTXT();
 
     let blob = new Blob([txt], {
-        type: "text/plain;charset=utf-8"
+        type: "text/plain;charset=us-ascii"
     });
 
     let link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "termo_retirada.txt";
+    link.download = "termo_retirada_gs_fj80h_ue_42col.txt";
     link.click();
-
     URL.revokeObjectURL(link.href);
+}
+
+
+function escaparHtml(texto) {
+    return String(texto || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function imprimirPrevia() {
     let txt = gerarTXT();
-
     let janela = window.open("", "_blank");
 
     janela.document.write(`
         <html>
         <head>
-            <title>Impressao</title>
+            <title>Impressao GS-FJ80H-UE</title>
             <style>
                 body {
                     font-family: "Courier New", monospace;
@@ -315,17 +356,22 @@ function imprimirPrevia() {
                     white-space: pre;
                     margin: 0;
                     padding: 0;
+                    line-height: 1.15;
                 }
 
                 @media print {
                     @page {
                         size: 80mm auto;
-                        margin: 4mm;
+                        margin: 3mm;
+                    }
+
+                    body {
+                        width: 72mm;
                     }
                 }
             </style>
         </head>
-        <body>${txt.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</body>
+        <body>${escaparHtml(txt)}</body>
         </html>
     `);
 
